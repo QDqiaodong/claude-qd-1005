@@ -211,6 +211,20 @@ public final class Dict {
     public static final List<String> SEGMENT_SHAPES = List.of("圆形", "矩形", "马蹄形");
     public static final List<String> SEGMENT_STATUSES = List.of("运营", "维护", "停用");
 
+    // ---------------- 综合管廊：巡检异常 / 风险事件 ----------------
+    /** 发现对象类型：风险事件只能从巡检点或附属设备登记 */
+    public static final List<String> RISK_SOURCE_TYPES = List.of("巡检点", "附属设备");
+
+    public static final List<String> RISK_SEVERITIES = List.of("一般", "较大", "重大");
+
+    /** 待处置 → 处理中 → 已解除（待处置也可直接解除） */
+    public static final List<String> RISK_STATUSES = List.of("待处置", "处理中", "已解除");
+
+    private static final Map<String, List<String>> RISK_NEXT = Map.of(
+            "待处置", List.of("处理中", "已解除"),
+            "处理中", List.of("已解除"),
+            "已解除", List.of());
+
     // ---------------- 取值方法 ----------------
 
     public static boolean isValidBerthType(String type) {
@@ -417,5 +431,25 @@ public final class Dict {
 
     public static boolean isValidSegmentStatus(String status) {
         return status != null && !status.isBlank() && SEGMENT_STATUSES.contains(status);
+    }
+
+    public static boolean isValidRiskSourceType(String sourceType) {
+        return sourceType != null && !sourceType.isBlank() && RISK_SOURCE_TYPES.contains(sourceType);
+    }
+
+    public static boolean isValidRiskSeverity(String severity) {
+        return severity != null && !severity.isBlank() && RISK_SEVERITIES.contains(severity);
+    }
+
+    public static boolean isValidRiskStatus(String status) {
+        return status != null && !status.isBlank() && RISK_STATUSES.contains(status);
+    }
+
+    /** 风险事件状态流转：待处置 → 处理中 → 已解除（待处置可直接解除，已解除为终态） */
+    public static boolean canTransferRisk(String from, String to) {
+        if (from == null || to == null) {
+            return false;
+        }
+        return RISK_NEXT.getOrDefault(from, List.of()).contains(to);
     }
 }

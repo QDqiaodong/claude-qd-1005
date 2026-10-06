@@ -1,6 +1,7 @@
 <script setup>
 import { computed, inject, onMounted, ref } from 'vue'
 import api from '../api'
+import RiskRegisterDialog from '../components/RiskRegisterDialog.vue'
 
 const refreshHealth = inject('refreshHealth', () => {})
 
@@ -22,6 +23,10 @@ const form = ref(blank())
 function blank() {
   return { segmentId: '', pointCode: '', location: '', lastPatrolAt: '' }
 }
+
+// 从巡检点登记风险：预填并锁定发现对象
+const riskOpen = ref(false)
+const riskPreset = ref(null)
 
 async function load() {
   loading.value = true; error.value = ''
@@ -53,6 +58,21 @@ async function register(row) {
     tip.value = `${row.pointCode} 巡检已登记`
     await Promise.all([load(), refreshHealth()])
   } catch (e) { error.value = e.message }
+}
+
+function openRisk(row) {
+  riskPreset.value = {
+    segmentId: row.segmentId,
+    sourceType: '巡检点',
+    sourceId: row.id,
+    sourceLabel: `${row.pointCode} · ${row.location || '无位置描述'}`
+  }
+  riskOpen.value = true
+  error.value = ''
+}
+async function onRiskSaved() {
+  tip.value = '风险事件已登记，可在「风险事件」模块处置'
+  await refreshHealth()
 }
 
 onMounted(async () => {
@@ -93,9 +113,10 @@ onMounted(async () => {
         <el-table-column prop="pointCode" label="点位编码" width="120" />
         <el-table-column prop="location" label="位置" min-width="160" />
         <el-table-column prop="lastPatrolAt" label="最近巡检" min-width="170" />
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button size="small" type="primary" @click="register(row)">巡检登记</el-button>
+            <el-button size="small" type="danger" plain @click="openRisk(row)">登记风险</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -119,5 +140,7 @@ onMounted(async () => {
         <el-button type="primary" :loading="saving" @click="save">建档</el-button>
       </template>
     </el-dialog>
+
+    <risk-register-dialog v-model="riskOpen" :preset="riskPreset" @saved="onRiskSaved" />
   </div>
 </template>

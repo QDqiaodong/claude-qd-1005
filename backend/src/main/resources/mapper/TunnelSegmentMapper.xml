@@ -40,6 +40,17 @@
         WHERE id = #{id}
     </select>
 
+    <select id="selectByIdForUpdate" resultMap="SegmentResult">
+        SELECT <include refid="Base_Column_List"/>
+        FROM tunnel_segment
+        WHERE id = #{id}
+        FOR UPDATE
+    </select>
+
+    <update id="updateStatus">
+        UPDATE tunnel_segment SET status = #{status} WHERE id = #{id}
+    </update>
+
     <select id="countAll" resultType="int">
         SELECT COUNT(*) FROM tunnel_segment
     </select>

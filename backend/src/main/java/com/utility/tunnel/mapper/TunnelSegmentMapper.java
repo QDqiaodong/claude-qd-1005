@@ -19,6 +19,11 @@ public interface TunnelSegmentMapper {
 
     TunnelSegment selectById(@Param("id") Long id);
 
+    /** 行锁读取：状态变更 / 风险登记时与并发事务互斥 */
+    TunnelSegment selectByIdForUpdate(@Param("id") Long id);
+
+    int updateStatus(@Param("id") Long id, @Param("status") String status);
+
     SegmentWithChildren selectWithChildren(@Param("id") Long id);
 
     int countAll();

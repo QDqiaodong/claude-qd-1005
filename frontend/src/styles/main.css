@@ -61,7 +61,7 @@ body {
 /* ---------------- 模块入口 ---------------- */
 .module-nav {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 14px;
   padding: 16px 24px 0;
 }
@@ -138,3 +138,7 @@ body {
 .el-button--primary { background: linear-gradient(120deg, var(--primary), var(--primary-soft)) !important; border-color: var(--primary) !important; }
 .el-button--primary:hover { background: var(--primary-deep) !important; }
 .el-tag { font-weight: 600; }
+
+/* 风险封控 */
+.lock-reason { color: #c62828; font-size: 12px; font-weight: 600; }
+.muted { color: var(--muted); font-size: 12px; }

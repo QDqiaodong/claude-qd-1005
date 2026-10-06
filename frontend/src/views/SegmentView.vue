@@ -1,10 +1,11 @@
 <script setup>
-import { inject, onMounted, ref } from 'vue'
+import { computed, inject, onMounted, ref } from 'vue'
 import api from '../api'
 
 const refreshHealth = inject('refreshHealth', () => {})
 
 const rows = ref([])
+const riskEvents = ref([])
 const error = ref('')
 const tip = ref('')
 const loading = ref(false)
@@ -22,11 +23,30 @@ function blank() {
 const detail = ref(null)
 const detailOpen = ref(false)
 
+// 未解除风险事件按舱段分组：用于「封控」列与恢复运营的前端提示（后端仍会强校验）
+const lockMap = computed(() => {
+  const m = {}
+  riskEvents.value.filter(e => e.status !== '已解除').forEach(e => {
+    (m[e.segmentId] = m[e.segmentId] || []).push(e)
+  })
+  return m
+})
+function lockReasonOf(row) {
+  const list = lockMap.value[row.id]
+  if (!list || !list.length) return ''
+  const latest = list[0] // 列表按 id 倒序，第一条即最近未解除事件
+  return `【${latest.severity}】${latest.description}`
+}
+
 async function load() {
   loading.value = true; error.value = ''
   try {
-    const data = await api.listSegments(statusFilter.value || '')
-    rows.value = data || []
+    const [segs, risks] = await Promise.all([
+      api.listSegments(statusFilter.value || ''),
+      api.listRiskEvents()
+    ])
+    rows.value = segs || []
+    riskEvents.value = risks || []
   } catch (e) { error.value = e.message } finally { loading.value = false }
 }
 
@@ -40,6 +60,16 @@ async function save() {
     dialog.value = false
     await Promise.all([load(), refreshHealth()])
   } catch (e) { error.value = e.message } finally { saving.value = false }
+}
+
+// 状态变更：维护/停用 → 运营 时后端校验封控（未解除风险事件），被拦会带出封控原因
+async function changeStatus(row, target) {
+  error.value = ''; tip.value = ''
+  try {
+    await api.changeSegmentStatus(row.id, target)
+    tip.value = `${row.segCode} 已切换为「${target}」`
+    await Promise.all([load(), refreshHealth()])
+  } catch (e) { error.value = e.message }
 }
 
 async function openDetail(row) {
@@ -58,7 +88,7 @@ onMounted(load)
     <div class="panel">
       <div class="panel-head">
         <span class="panel-title">廊体舱段</span>
-        <span class="panel-desc">新建舱段长度须 &gt; 0；断面形状：圆形 / 矩形 / 马蹄形</span>
+        <span class="panel-desc">新建舱段长度须 &gt; 0；存在未解除风险事件的舱段被封控，不能恢复运营</span>
       </div>
 
       <div v-if="error" class="err">{{ error }}</div>
@@ -89,9 +119,21 @@ onMounted(load)
             <el-tag :type="row.status === '运营' ? 'success' : row.status === '维护' ? 'warning' : 'info'">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="封控" min-width="200">
           <template #default="{ row }">
-            <el-button size="small" @click="openDetail(row)">查看子项</el-button>
+            <template v-if="lockMap[row.id]">
+              <el-tag type="danger" size="small">封控中·{{ lockMap[row.id].length }}</el-tag>
+              <span class="lock-reason"> {{ lockReasonOf(row) }}</span>
+            </template>
+            <span v-else class="muted">—</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="300" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" @click="openDetail(row)">子项</el-button>
+            <el-button v-if="row.status !== '运营'" size="small" type="success" plain @click="changeStatus(row, '运营')">恢复运营</el-button>
+            <el-button v-if="row.status !== '维护'" size="small" type="warning" plain @click="changeStatus(row, '维护')">转维护</el-button>
+            <el-button v-if="row.status !== '停用'" size="small" plain @click="changeStatus(row, '停用')">停用</el-button>
           </template>
         </el-table-column>
       </el-table>

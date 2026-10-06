@@ -31,6 +31,7 @@ export default {
   getSegment: (id) => call(http.get(`/segments/${id}`)),
   getSegmentWithChildren: (id) => call(http.get(`/segments/${id}/with-children`)),
   createSegment: (d) => call(http.post('/segments', d)),
+  changeSegmentStatus: (id, status) => call(http.post(`/segments/${id}/status`, { status })),
 
   // ---------------- 入廊管线 ----------------
   listPipelines: (segmentId) => call(http.get('/pipelines', params(segmentId ? { segmentId } : {}))),
@@ -45,5 +46,15 @@ export default {
   listFacilities: (segmentId) => call(http.get('/facilities', params(segmentId ? { segmentId } : {}))),
   createFacility: (d) => call(http.post('/facilities', d)),
   faultFacility: (id) => call(http.post(`/facilities/${id}/fault`)),
-  restoreFacility: (id) => call(http.post(`/facilities/${id}/restore`))
+  restoreFacility: (id) => call(http.post(`/facilities/${id}/restore`)),
+
+  // ---------------- 巡检异常 / 风险事件 ----------------
+  listRiskEvents: (segmentId, status) => call(http.get('/risk-events', params({
+    ...(segmentId ? { segmentId } : {}),
+    ...(status ? { status } : {})
+  }))),
+  getRiskEvent: (id) => call(http.get(`/risk-events/${id}`)),
+  createRiskEvent: (d) => call(http.post('/risk-events', d)),
+  advanceRiskEvent: (id, handleNote) => call(http.post(`/risk-events/${id}/advance`, { handleNote })),
+  resolveRiskEvent: (id, d) => call(http.post(`/risk-events/${id}/resolve`, d))
 }

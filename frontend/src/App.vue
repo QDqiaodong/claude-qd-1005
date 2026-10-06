@@ -7,29 +7,32 @@ import SegmentView from './views/SegmentView.vue'
 import PipelineView from './views/PipelineView.vue'
 import PatrolView from './views/PatrolView.vue'
 import FacilityView from './views/FacilityView.vue'
+import RiskView from './views/RiskView.vue'
 
 // ------------------------------------------------------------------
 // 导航形态：顶部「半圆仪表」展示全廊体健康度（SVG 半圆 + 填充 + 指针），
-// 其下为四个模块入口卡片。点击卡片经 <component :is> 切换业务视图。
+// 其下为五个模块入口卡片。点击卡片经 <component :is> 切换业务视图。
 // ------------------------------------------------------------------
 
 const viewMap = {
   '/segment': SegmentView,
   '/pipeline': PipelineView,
   '/patrol': PatrolView,
-  '/facility': FacilityView
+  '/facility': FacilityView,
+  '/risk': RiskView
 }
 
 const tabs = [
   { path: '/segment', label: '廊体舱段', sub: '断面 · 长度 · 运营/维护/停用' },
   { path: '/pipeline', label: '入廊管线', sub: '电力/通信/给水/排水/热力/燃气' },
   { path: '/patrol', label: '巡检点', sub: '点位 · 位置 · 最近巡检' },
-  { path: '/facility', label: '附属设备', sub: '风机/排水泵/照明/监控' }
+  { path: '/facility', label: '附属设备', sub: '风机/排水泵/照明/监控' },
+  { path: '/risk', label: '风险事件', sub: '登记 · 处置 · 解除封控' }
 ]
 
 const currentPath = ref(router.currentRoute.value.path)
 const health = ref({ score: 100, totalSegments: 0, operating: 0, maintaining: 0, stopped: 0, totalFacilities: 0, faultyFacilities: 0 })
-const counts = ref({ segment: 0, pipeline: 0, patrol: 0, facility: 0 })
+const counts = ref({ segment: 0, pipeline: 0, patrol: 0, facility: 0, risk: 0 })
 
 const currentView = computed(() => viewMap[currentPath.value] || SegmentView)
 
@@ -62,10 +65,10 @@ async function loadHealth() {
 
 async function loadCounts() {
   try {
-    const [s, p, pt, f] = await Promise.all([
-      api.listSegments(), api.listPipelines(), api.listPatrolPoints(), api.listFacilities()
+    const [s, p, pt, f, r] = await Promise.all([
+      api.listSegments(), api.listPipelines(), api.listPatrolPoints(), api.listFacilities(), api.listRiskEvents()
     ])
-    counts.value = { segment: s.length, pipeline: p.length, patrol: pt.length, facility: f.length }
+    counts.value = { segment: s.length, pipeline: p.length, patrol: pt.length, facility: f.length, risk: r.length }
   } catch (e) { /* 计数失败不影响主流程 */ }
 }
 

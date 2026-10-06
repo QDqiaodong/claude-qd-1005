@@ -46,4 +46,10 @@ public class TunnelSegmentController {
     public ApiResponse<TunnelSegment> create(@RequestBody TunnelSegment input) {
         return ApiResponse.success("舱段已建档", segmentService.create(input));
     }
+
+    /** 状态变更：维护/停用 → 运营 需本舱段无未解除风险事件（封控闭环） */
+    @PostMapping("/{id}/status")
+    public ApiResponse<TunnelSegment> changeStatus(@PathVariable Long id, @RequestBody TunnelSegment input) {
+        return ApiResponse.success("舱段状态已更新", segmentService.changeStatus(id, input.getStatus()));
+    }
 }
