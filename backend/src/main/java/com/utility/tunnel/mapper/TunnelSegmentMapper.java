@@ -19,6 +19,11 @@ public interface TunnelSegmentMapper {
 
     TunnelSegment selectById(@Param("id") Long id);
 
+    /** 行级锁取舱段（封控 / 恢复 / 风险登记事务内使用，串行化封控状态判断） */
+    TunnelSegment selectByIdForUpdate(@Param("id") Long id);
+
+    int updateStatus(@Param("id") Long id, @Param("status") String status);
+
     SegmentWithChildren selectWithChildren(@Param("id") Long id);
 
     int countAll();

@@ -61,7 +61,7 @@ body {
 /* ---------------- 模块入口 ---------------- */
 .module-nav {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 14px;
   padding: 16px 24px 0;
 }
@@ -135,6 +135,9 @@ body {
 
 /* Element Plus 微调 */
 .el-table { --el-table-header-bg-color: var(--primary-wash); --el-table-header-text-color: var(--primary-deep); }
+
+/* 表格单元格内的次要信息（封控原因、对象附属信息等） */
+.cell-sub { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
 .el-button--primary { background: linear-gradient(120deg, var(--primary), var(--primary-soft)) !important; border-color: var(--primary) !important; }
 .el-button--primary:hover { background: var(--primary-deep) !important; }
 .el-tag { font-weight: 600; }

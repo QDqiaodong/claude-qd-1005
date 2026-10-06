@@ -15,6 +15,7 @@ CREATE DATABASE IF NOT EXISTS utility_tunnel
 USE utility_tunnel;
 
 SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS risk_event;
 DROP TABLE IF EXISTS facility;
 DROP TABLE IF EXISTS patrol_point;
 DROP TABLE IF EXISTS pipeline;
@@ -65,8 +66,30 @@ CREATE TABLE facility (
     KEY idx_facility_segment (segment_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ---------------- 巡检异常 / 风险事件 ----------------
+-- severity ∈ {一般, 重要, 紧急}；status ∈ {待处置, 处理中, 已解除}；source_type ∈ {PATROL, FACILITY}
+-- status 非「已解除」即视为未解除风险：该舱段在最后一条未解除事件解除前不得从「维护/停用」恢复「运营」
+CREATE TABLE risk_event (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    segment_id BIGINT NOT NULL,
+    source_type VARCHAR(16) NOT NULL,
+    source_id BIGINT NOT NULL,
+    severity VARCHAR(16) NOT NULL,
+    description VARCHAR(512) NOT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT '待处置',
+    handle_note VARCHAR(512),
+    found_at DATETIME NOT NULL,
+    resolver VARCHAR(32),
+    resolved_at DATETIME,
+    created_at DATETIME,
+    KEY idx_risk_segment (segment_id),
+    KEY idx_risk_status (status),
+    KEY idx_risk_source (source_type, source_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- =====================================================================
--- 种子数据（14 行，覆盖全部四个模块；演示「电力 + 燃气 防爆隔离」规则场景）
+-- 种子数据（18 行，覆盖全部五个模块；演示「电力 + 燃气 防爆隔离」规则场景）
+-- 风险事件场景：SEG-03 同时挂 2 条未解除事件（一条可先解除、舱段仍封控）；SEG-04 事件已解除但舱段仍停用待人工恢复
 -- =====================================================================
 
 INSERT INTO tunnel_segment (id, seg_code, seg_name, shape, length_m, status, created_at) VALUES
@@ -89,4 +112,21 @@ INSERT INTO patrol_point (id, segment_id, point_code, location, last_patrol_at, 
 INSERT INTO facility (id, segment_id, facility_type, status, created_at) VALUES
 (1, 1, '风机',   '正常', UTC_TIMESTAMP() + INTERVAL 8 HOUR - INTERVAL 70 DAY),
 (2, 1, '排水泵', '故障', UTC_TIMESTAMP() + INTERVAL 8 HOUR - INTERVAL 70 DAY),
-(3, 4, '监控',   '故障', UTC_TIMESTAMP() + INTERVAL 8 HOUR - INTERVAL 55 DAY);
+(3, 4, '监控',   '故障', UTC_TIMESTAMP() + INTERVAL 8 HOUR - INTERVAL 55 DAY),
+(4, 3, '照明',   '故障', UTC_TIMESTAMP() + INTERVAL 8 HOUR - INTERVAL 10 DAY);
+
+INSERT INTO risk_event
+    (id, segment_id, source_type, source_id, severity, description, status, handle_note, found_at, resolver, resolved_at, created_at)
+VALUES
+(1, 3, 'PATROL',   3, '重要', 'K2+000 巡检点发现舱壁渗漏水迹，疑似伸缩缝密封老化',
+    '待处置', NULL, UTC_TIMESTAMP() + INTERVAL 8 HOUR - INTERVAL 3 DAY,
+    NULL, NULL, UTC_TIMESTAMP() + INTERVAL 8 HOUR - INTERVAL 3 DAY),
+(2, 3, 'FACILITY', 4, '紧急', '照明回路跳闸，K1+800~K2+100 段照度不足，夜间巡检受阻',
+    '处理中', '已联系机电班更换漏电保护开关，备件到货后复测',
+    UTC_TIMESTAMP() + INTERVAL 8 HOUR - INTERVAL 1 DAY,
+    NULL, NULL, UTC_TIMESTAMP() + INTERVAL 8 HOUR - INTERVAL 1 DAY),
+(3, 4, 'FACILITY', 3, '一般', '燃气舱监控摄像头离线，重启后恢复在线',
+    '已解除', '现场重启设备并核对信号链路，连续观察 24 小时无异常',
+    UTC_TIMESTAMP() + INTERVAL 8 HOUR - INTERVAL 6 DAY,
+    '周明远', UTC_TIMESTAMP() + INTERVAL 8 HOUR - INTERVAL 5 DAY,
+    UTC_TIMESTAMP() + INTERVAL 8 HOUR - INTERVAL 6 DAY);

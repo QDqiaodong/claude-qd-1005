@@ -6,6 +6,7 @@ import SegmentView from '../views/SegmentView.vue'
 import PipelineView from '../views/PipelineView.vue'
 import PatrolView from '../views/PatrolView.vue'
 import FacilityView from '../views/FacilityView.vue'
+import RiskView from '../views/RiskView.vue'
 
 const routes = [
   { path: '/', redirect: '/segment' },
@@ -13,6 +14,7 @@ const routes = [
   { path: '/pipeline', name: 'pipeline', component: PipelineView },
   { path: '/patrol', name: 'patrol', component: PatrolView },
   { path: '/facility', name: 'facility', component: FacilityView },
+  { path: '/risk', name: 'risk', component: RiskView },
   { path: '/:pathMatch(.*)*', redirect: '/segment' }
 ]
 

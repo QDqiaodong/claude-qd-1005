@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.utility.tunnel.mapper.RiskEventMapper">
+
+    <resultMap id="RiskResult" type="com.utility.tunnel.entity.RiskEvent">
+        <id column="id" property="id"/>
+        <result column="segment_id" property="segmentId"/>
+        <result column="source_type" property="sourceType"/>
+        <result column="source_id" property="sourceId"/>
+        <result column="severity" property="severity"/>
+        <result column="description" property="description"/>
+        <result column="status" property="status"/>
+        <result column="handle_note" property="handleNote"/>
+        <result column="found_at" property="foundAt"/>
+        <result column="resolver" property="resolver"/>
+        <result column="resolved_at" property="resolvedAt"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <!-- 列表 / 详情用：本事件字段 + 舱段与发现对象的关联展示字段 + 舱段未解除数 -->
+    <resultMap id="RiskDetailResult" type="com.utility.tunnel.entity.RiskEvent" extends="RiskResult">
+        <result column="seg_code" property="segCode"/>
+        <result column="seg_name" property="segName"/>
+        <result column="seg_status" property="segStatus"/>
+        <result column="source_name" property="sourceName"/>
+        <result column="source_detail" property="sourceDetail"/>
+        <result column="open_count" property="openCount"/>
+    </resultMap>
+
+    <sql id="Detail_Select">
+        SELECT
+            r.id, r.segment_id, r.source_type, r.source_id, r.severity,
+            r.description, r.status, r.handle_note, r.found_at,
+            r.resolver, r.resolved_at, r.created_at,
+            s.seg_code AS seg_code,
+            s.seg_name AS seg_name,
+            s.status   AS seg_status,
+            CASE r.source_type
+                WHEN 'PATROL' THEN pt.point_code
+                ELSE f.facility_type
+            END AS source_name,
+            CASE r.source_type
+                WHEN 'PATROL' THEN pt.location
+                ELSE CONCAT('设备状态：', f.status)
+            END AS source_detail,
+            (SELECT COUNT(*) FROM risk_event c
+             WHERE c.segment_id = r.segment_id AND c.status &lt;&gt; '已解除') AS open_count
+        FROM risk_event r
+        INNER JOIN tunnel_segment s ON s.id = r.segment_id
+        LEFT JOIN patrol_point pt ON r.source_type = 'PATROL' AND pt.id = r.source_id
+        LEFT JOIN facility f ON r.source_type = 'FACILITY' AND f.id = r.source_id
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO risk_event
+            (segment_id, source_type, source_id, severity, description,
+             status, handle_note, found_at, resolver, resolved_at, created_at)
+        VALUES
+            (#{segmentId}, #{sourceType}, #{sourceId}, #{severity}, #{description},
+             #{status}, #{handleNote}, #{foundAt}, #{resolver}, #{resolvedAt}, UTC_TIMESTAMP())
+    </insert>
+
+    <select id="search" resultMap="RiskDetailResult">
+        <include refid="Detail_Select"/>
+        <where>
+            <if test="segmentId != null">AND r.segment_id = #{segmentId}</if>
+            <if test="status != null and status != ''">AND r.status = #{status}</if>
+        </where>
+        ORDER BY
+            CASE WHEN r.status = '已解除' THEN 1 ELSE 0 END,
+            r.found_at DESC,
+            r.id DESC
+    </select>
+
+    <select id="selectDetailById" resultMap="RiskDetailResult">
+        <include refid="Detail_Select"/>
+        WHERE r.id = #{id}
+    </select>
+
+    <select id="selectByIdForUpdate" resultMap="RiskResult">
+        SELECT id, segment_id, source_type, source_id, severity, description,
+               status, handle_note, found_at, resolver, resolved_at, created_at
+        FROM risk_event
+        WHERE id = #{id}
+        FOR UPDATE
+    </select>
+
+    <update id="advanceStatus">
+        UPDATE risk_event
+        SET status = #{toStatus},
+            handle_note =
+                CASE WHEN #{handleNote} IS NULL OR #{handleNote} = ''
+                     THEN handle_note ELSE #{handleNote} END
+        WHERE id = #{id} AND status = #{fromStatus}
+    </update>
+
+    <update id="resolve">
+        UPDATE risk_event
+        SET status = '已解除',
+            handle_note = #{handleNote},
+            resolver = #{resolver},
+            resolved_at = #{resolvedAt}
+        WHERE id = #{id} AND status = '处理中'
+    </update>
+
+    <select id="countOpenBySegmentForUpdate" resultType="int">
+        SELECT COUNT(*)
+        FROM risk_event
+        WHERE segment_id = #{segmentId} AND status &lt;&gt; '已解除'
+        LOCK IN SHARE MODE
+    </select>
+
+    <select id="selectLatestOpenBySegment" resultMap="RiskResult">
+        SELECT id, segment_id, source_type, source_id, severity, description,
+               status, handle_note, found_at, resolver, resolved_at, created_at
+        FROM risk_event
+        WHERE segment_id = #{segmentId} AND status &lt;&gt; '已解除'
+        ORDER BY found_at DESC, id DESC
+        LIMIT 1
+    </select>
+
+</mapper>

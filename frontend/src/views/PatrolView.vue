@@ -1,8 +1,10 @@
 <script setup>
 import { computed, inject, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '../api'
 
 const refreshHealth = inject('refreshHealth', () => {})
+const router = useRouter()
 
 const rows = ref([])
 const segments = ref([])
@@ -55,6 +57,14 @@ async function register(row) {
   } catch (e) { error.value = e.message }
 }
 
+/** 从巡检点登记风险事件：跳到风险页并带入舱段与点位 */
+function registerRisk(row) {
+  router.push({
+    path: '/risk',
+    query: { sourceType: 'PATROL', sourceId: row.id, segmentId: row.segmentId }
+  })
+}
+
 onMounted(async () => {
   try { segments.value = await api.listSegments() } catch (e) {}
   await load()
@@ -66,7 +76,7 @@ onMounted(async () => {
     <div class="panel">
       <div class="panel-head">
         <span class="panel-title">巡检点</span>
-        <span class="panel-desc">登记巡检会刷新「最近巡检时间」为当前时间</span>
+        <span class="panel-desc">巡检登记只刷新「最近巡检时间」；发现异常可用「登记风险」发起舱段封控闭环</span>
       </div>
 
       <div v-if="error" class="err">{{ error }}</div>
@@ -93,9 +103,10 @@ onMounted(async () => {
         <el-table-column prop="pointCode" label="点位编码" width="120" />
         <el-table-column prop="location" label="位置" min-width="160" />
         <el-table-column prop="lastPatrolAt" label="最近巡检" min-width="170" />
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作" width="210" fixed="right">
           <template #default="{ row }">
             <el-button size="small" type="primary" @click="register(row)">巡检登记</el-button>
+            <el-button size="small" type="danger" plain @click="registerRisk(row)">登记风险</el-button>
           </template>
         </el-table-column>
       </el-table>

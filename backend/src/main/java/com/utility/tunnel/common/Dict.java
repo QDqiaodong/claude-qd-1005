@@ -211,6 +211,27 @@ public final class Dict {
     public static final List<String> SEGMENT_SHAPES = List.of("圆形", "矩形", "马蹄形");
     public static final List<String> SEGMENT_STATUSES = List.of("运营", "维护", "停用");
 
+    // ---------------- 综合管廊：巡检异常 / 风险事件 ----------------
+    /** 发现对象类型：巡检点 / 附属设备 */
+    public static final String RISK_SOURCE_PATROL = "PATROL";
+    public static final String RISK_SOURCE_FACILITY = "FACILITY";
+
+    private static final Map<String, String> RISK_SOURCE_NAME = Map.of(
+            RISK_SOURCE_PATROL, "巡检点",
+            RISK_SOURCE_FACILITY, "附属设备");
+
+    public static final List<String> RISK_SEVERITIES = List.of("一般", "重要", "紧急");
+
+    /** 待处置 → 处理中 → 已解除，逐级推进，不可跳级、不可回退 */
+    public static final String RISK_STATUS_OPEN = "待处置";
+    public static final String RISK_STATUS_PROCESSING = "处理中";
+    public static final String RISK_STATUS_RESOLVED = "已解除";
+
+    private static final Map<String, String> RISK_STATUS_NEXT = Map.of(
+            RISK_STATUS_OPEN, RISK_STATUS_PROCESSING,
+            RISK_STATUS_PROCESSING, RISK_STATUS_RESOLVED,
+            RISK_STATUS_RESOLVED, "");
+
     // ---------------- 取值方法 ----------------
 
     public static boolean isValidBerthType(String type) {
@@ -417,5 +438,32 @@ public final class Dict {
 
     public static boolean isValidSegmentStatus(String status) {
         return status != null && !status.isBlank() && SEGMENT_STATUSES.contains(status);
+    }
+
+    // ---------------- 综合管廊：风险事件取值方法 ----------------
+
+    public static boolean isValidRiskSourceType(String type) {
+        return RISK_SOURCE_NAME.containsKey(type);
+    }
+
+    public static String riskSourceTypeName(String type) {
+        return type == null ? "" : RISK_SOURCE_NAME.getOrDefault(type, type);
+    }
+
+    public static boolean isValidRiskSeverity(String severity) {
+        return severity != null && !severity.isBlank() && RISK_SEVERITIES.contains(severity);
+    }
+
+    public static boolean isValidRiskStatus(String status) {
+        return status != null && RISK_STATUS_NEXT.containsKey(status);
+    }
+
+    /**
+     * 风险事件只能逐级推进：待处置 → 处理中 → 已解除；已解除为终态。
+     * 已解除事件重复提交推进 / 解除一律返回 false，防止重复放行。
+     */
+    public static String nextRiskStatus(String from) {
+        String next = RISK_STATUS_NEXT.get(from);
+        return (next == null || next.isEmpty()) ? null : next;
     }
 }

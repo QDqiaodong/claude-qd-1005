@@ -1,8 +1,10 @@
 <script setup>
 import { computed, inject, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '../api'
 
 const refreshHealth = inject('refreshHealth', () => {})
+const router = useRouter()
 
 const rows = ref([])
 const segments = ref([])
@@ -66,6 +68,14 @@ async function restore(row) {
   } catch (e) { error.value = e.message }
 }
 
+/** 从附属设备登记风险事件：跳到风险页并带入舱段与设备 */
+function registerRisk(row) {
+  router.push({
+    path: '/risk',
+    query: { sourceType: 'FACILITY', sourceId: row.id, segmentId: row.segmentId }
+  })
+}
+
 onMounted(async () => {
   try { segments.value = await api.listSegments() } catch (e) {}
   await load()
@@ -77,7 +87,7 @@ onMounted(async () => {
     <div class="panel">
       <div class="panel-head">
         <span class="panel-title">附属设备</span>
-        <span class="panel-desc">设备报故障将状态置为「故障」，修复后恢复「正常」</span>
+        <span class="panel-desc">设备报故障置为「故障」、修复恢复「正常」；故障可直接「登记风险」发起封控闭环</span>
       </div>
 
       <div v-if="error" class="err">{{ error }}</div>
@@ -107,10 +117,11 @@ onMounted(async () => {
             <el-tag :type="row.status === '正常' ? 'success' : 'danger'">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="290" fixed="right">
           <template #default="{ row }">
             <el-button size="small" type="danger" plain :disabled="row.status === '故障'" @click="fault(row)">报故障</el-button>
             <el-button size="small" :disabled="row.status === '正常'" @click="restore(row)">恢复</el-button>
+            <el-button size="small" type="warning" plain @click="registerRisk(row)">登记风险</el-button>
           </template>
         </el-table-column>
       </el-table>
